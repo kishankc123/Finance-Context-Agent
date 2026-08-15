@@ -13,6 +13,7 @@ import (
 	"fincontext/backend/internal/data"
 	"fincontext/backend/internal/gatewayclient"
 	"fincontext/backend/internal/httpapi"
+	"fincontext/backend/internal/marketdata"
 	"fincontext/backend/internal/provider"
 	"fincontext/backend/internal/sqlstore"
 	"fincontext/backend/internal/vector"
@@ -56,7 +57,8 @@ func main() {
 
 	validator := citations.NewValidator(store)
 	runner := agent.NewRunner(store, validator, sqlite)
-	chatProvider := provider.NewFixtureProvider(store, validator)
+	marketDataClient := marketdata.NewClient(cfg.MarketDataURL)
+	chatProvider := provider.NewFixtureProvider(store, validator).WithMarketData(marketDataClient)
 	gateway := gatewayclient.New(cfg.GatewayURL)
 	server := httpapi.New(store, runner, chatProvider, cfg.StaticDir, httpapi.Dependencies{
 		SQLite:  sqlite,

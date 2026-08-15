@@ -21,6 +21,18 @@ services:
     ports:
       - "8080:8080"
 
+  market-data-tool-server:
+    build:
+      context: ../services/market-data-tool-server
+    environment:
+      PORT: "8091"
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
+      CACHE_TTL_SECONDS: ${MARKET_DATA_CACHE_TTL_SECONDS:-90}
+      RATE_LIMIT_WINDOW_MS: "60000"
+      RATE_LIMIT_MAX_REQUESTS: "30"
+    ports:
+      - "8091:8091"
+
   agent-api:
     build:
       context: ..
@@ -33,10 +45,12 @@ services:
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: fincontext_chunks
       INFERENCE_GATEWAY_URL: http://inference-gateway:8080
+      MARKET_DATA_URL: http://market-data-tool-server:8091
       STRICT_DEPENDENCIES: ${STRICT_DEPENDENCIES:-false}
     depends_on:
       - qdrant
       - inference-gateway
+      - market-data-tool-server
     ports:
       - "8090:8090"
     volumes:

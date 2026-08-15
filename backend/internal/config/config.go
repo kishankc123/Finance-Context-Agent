@@ -15,6 +15,7 @@ type AgentAPI struct {
 	QdrantURL        string
 	QdrantCollection string
 	GatewayURL       string
+	MarketDataURL    string
 	VectorSize       int
 	StrictDeps       bool
 }
@@ -39,6 +40,7 @@ func LoadAgentAPI() AgentAPI {
 		QdrantURL:        env("QDRANT_URL", "http://localhost:6333"),
 		QdrantCollection: env("QDRANT_COLLECTION", "fincontext_chunks"),
 		GatewayURL:       env("INFERENCE_GATEWAY_URL", "http://localhost:8080"),
+		MarketDataURL:    env("MARKET_DATA_URL", "http://localhost:8091"),
 		VectorSize:       intEnv("QDRANT_VECTOR_SIZE", 1024),
 		StrictDeps:       boolEnv("STRICT_DEPENDENCIES", false),
 	}

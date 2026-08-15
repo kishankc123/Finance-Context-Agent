@@ -84,6 +84,68 @@ Logical chat model routing:
 - `fincontext-planner` -> `NIM_PLANNER_MODEL`
 - `fincontext-reasoner` -> `NIM_REASONER_MODEL`
 
+### Market Data Tool Server
+
+Entrypoint: `services/market-data-tool-server` (Node.js/TypeScript, Express)
+
+Live market data (current price, day change, volume, market cap, P/E, EPS,
+sector) is deliberately **not** part of the Go Agent API. It lives in its
+own small Node service for three reasons:
+
+1. **Different lifecycle.** Filing evidence is static, curated, and
+   citation-validated; live quotes are ephemeral, third-party, rate-limited
+   data with no filing citation behind them. Keeping them in separate
+   services means a live-data provider outage or rate limit never touches
+   filing retrieval or memo generation.
+2. **No change to the model boundary.** Agent API code is not supposed to
+   call external data providers directly — that's the Inference Gateway's
+   job for model calls. A dedicated tool service keeps that boundary
+   intact instead of bolting a third-party HTTP client onto Agent API.
+3. **Isolation blast radius.** If the free-tier market data API changes its
+   contract or gets rate-limited, only this one small service needs to
+   change, and it fails independently (agent-api degrades gracefully, the
+   same pattern already used for Qdrant).
+
+**Endpoints:**
+
+- `GET /tools/get_stock_quote?ticker=AMD` — price, day change, volume
+- `GET /tools/get_company_fundamentals?ticker=AMD` — market cap, P/E, EPS, sector
+- `GET /tools/schema` — OpenAI/LangGraph-style function-calling tool
+  definitions (name, description, JSON Schema params) for both tools above
+- `GET /health` — cache hit-rate stats + liveness
+
+Responses are cached in-memory per ticker (`CACHE_TTL_SECONDS`, default 90s)
+to stay under the free-tier provider's rate limit; the cache is a small
+`Map`-backed TTL store with a swappable interface, so a Redis-backed cache
+is a drop-in replacement if this needs to run as more than one instance.
+The service also rate-limits its own inbound requests per IP.
+
+**How the Go side talks to it:** `backend/internal/marketdata` is a thin
+HTTP client (`Client.GetQuote`, `Client.GetFundamentals`,
+`Client.FetchToolSchemas`). `FetchToolSchemas` is called at Agent API
+startup so tool definitions are registered from the Node service's
+`/tools/schema` response rather than hardcoded twice. Routing between
+"this needs live data" vs. "this is a filing question" is a small keyword
+heuristic in `marketdata.NeedsLiveMarketData`, used by
+`provider.FixtureProvider` before it decides whether to call the tool
+service in addition to citation-backed filing evidence — see
+`backend/internal/provider/provider.go`. A tool call failure never fails
+the chat answer; it just falls back to filing-only content, since every
+factual memo claim still has to trace to a validated citation.
+
+**Run it locally:**
+
+```bash
+cd services/market-data-tool-server
+cp .env.example .env   # set FINNHUB_API_KEY (free tier: https://finnhub.io/register)
+npm install
+npm run dev
+```
+
+**Run the full stack (including this service) via docker-compose:** see
+below — `market-data-tool-server` is wired into `infra/docker-compose.yml`
+and `agent-api` picks it up via `MARKET_DATA_URL`.
+
 ## Local Production Stack
 
 Create env config:
