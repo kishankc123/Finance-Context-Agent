@@ -294,7 +294,7 @@ def _count_searchable_fts_rows(conn: sqlite3.Connection) -> int:
             continue
         matched = conn.execute(
             "SELECT 1 FROM chunks_fts WHERE chunks_fts MATCH ? AND rowid = ? LIMIT 1",
-            (token, rowid),
+            (f'"{token}"', rowid),
         ).fetchone()
         if matched is not None:
             searchable += 1

@@ -15,3 +15,4 @@ dist/
 AMD Hack Financial Frontend Kinda/
 *.egg-info/
 .pytest_cache/
+services/ingestion-worker/.cache/
