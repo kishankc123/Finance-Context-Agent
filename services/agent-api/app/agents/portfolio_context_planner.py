@@ -25,7 +25,7 @@ def default_plan(state: AnalysisState) -> RetrievalPlan:
         query=question,
         target_tickers=tickers,
         filing_types=["10-K", "10-Q"],
-        sections=["Item 1", "Item 1A", "Item 7", "Item 7A", "item_1", "item_1a", "item_7", "item_7a"],
+        sections=["item_1", "item_1a", "item_7", "item_7a", "item_8"],
         date_range_start=f"{date.today().year - 4}-01-01",
         date_range_end=date.today().isoformat(),
         bm25_keywords=[
@@ -59,7 +59,7 @@ async def portfolio_context_planner(state: AnalysisState) -> AnalysisState:
             "holdings": [holding.model_dump() for holding in holdings],
             "question": state.question,
             "default_filing_types": fallback.filing_types,
-            "default_sections": ["Item 1A", "Item 7", "Item 7A"],
+            "default_sections": ["item_1a", "item_7", "item_7a"],
         }
         try:
             async with InferenceGatewayClient() as gateway:
@@ -77,6 +77,13 @@ async def portfolio_context_planner(state: AnalysisState) -> AnalysisState:
                     ],
                     model="fincontext-planner",
                 )
+            # The model isn't reliably aware of the current date and will
+            # invent a plausible-looking but wrong date_range (e.g. years in
+            # the past), silently excluding every real filing. Date math is
+            # deterministic -- always trust the code-computed fallback range
+            # over whatever the model returns.
+            data.pop("date_range_start", None)
+            data.pop("date_range_end", None)
             plan = RetrievalPlan.model_validate({**fallback.model_dump(), **data})
             if not plan.target_tickers:
                 plan = plan.model_copy(update={"target_tickers": target_tickers})

@@ -64,16 +64,26 @@ def reciprocal_rank_fusion(
 def apply_section_diversity(
     chunks: list[EvidenceChunk],
     max_per_section_per_ticker: int = 3,
+    max_per_section_per_date: int = 2,
     limit: int = 12,
 ) -> list[EvidenceChunk]:
+    # Two-level cap: (ticker, section) bounds the overall budget per section,
+    # while (ticker, section, filed_at) stops one filing period's near-duplicate
+    # boilerplate language from consuming the whole budget and crowding out
+    # older periods the disclosure-drift diff step needs to compare against.
     counts: dict[tuple[str, str], int] = {}
+    date_counts: dict[tuple[str, str, str], int] = {}
     selected: list[EvidenceChunk] = []
     for chunk in chunks:
         key = (chunk.ticker, chunk.section)
+        date_key = (chunk.ticker, chunk.section, chunk.filed_at)
         if counts.get(key, 0) >= max_per_section_per_ticker:
+            continue
+        if date_counts.get(date_key, 0) >= max_per_section_per_date:
             continue
         selected.append(chunk)
         counts[key] = counts.get(key, 0) + 1
+        date_counts[date_key] = date_counts.get(date_key, 0) + 1
         if len(selected) >= limit:
             break
     return selected

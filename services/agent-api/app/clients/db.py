@@ -67,8 +67,16 @@ class SQLiteClient:
         sections: list[str],
         limit: int = 50,
     ) -> list[tuple[ChunkRow, float]]:
+        # Quote each token as a literal phrase so bare words that collide with
+        # FTS5 operators (AND, OR, NOT, NEAR) are matched as text, not parsed
+        # as boolean syntax. Join with OR (not the default implicit AND) so a
+        # chunk only needs to contain some of the query's words, not all of
+        # them -- a full natural-language question ANDed together almost
+        # never matches any single paragraph-sized chunk. bm25() ranking
+        # (see ORDER BY below) still surfaces the best-matching rows first.
+        fts_query = " OR ".join(f'"{token}"' for token in query.split() if token)
         where = ["chunks_fts MATCH ?", "c.ticker = ?"]
-        params: list[Any] = [query, ticker]
+        params: list[Any] = [fts_query, ticker]
         if filing_types:
             where.append(f"c.filing_type IN ({','.join('?' for _ in filing_types)})")
             params.extend(filing_types)

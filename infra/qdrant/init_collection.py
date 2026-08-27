@@ -17,7 +17,7 @@ VECTOR_SIZE = 1024
 PAYLOAD_INDEXES = {
     "ticker": "keyword",
     "filing_type": "keyword",
-    "filed_at": "keyword",
+    "filed_at": "datetime",
     "section": "keyword",
 }
 

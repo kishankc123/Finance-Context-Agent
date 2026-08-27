@@ -93,7 +93,7 @@ class InferenceGatewayClient:
     async def embed(self, text: str) -> list[float]:
         response = await self.client.post(
             f"{self.base_url}/v1/embeddings",
-            json={"input": text},
+            json={"input": [text]},
         )
         response.raise_for_status()
         payload = response.json()

@@ -47,8 +47,10 @@ from fincontext_schemas import (
     ChatTokenEvent,
     DiffChange,
     DiffResponse,
+    DisclosureChangeSummary,
     DocumentsResponse,
     EmbeddingMetrics,
+    EvidenceEntry,
     FindingsMemo,
     FindingsResponse,
     JobStatusResponse,
@@ -174,8 +176,27 @@ def _build_findings_response(portfolio_id: str, job_id: str, analyzed_at: str, s
             )
             for h in state.holdings
         ],
-        top_disclosure_changes=[],
-        evidence_table=[],
+        top_disclosure_changes=[
+            DisclosureChangeSummary(
+                ticker=change.ticker,
+                section=change.section,
+                change_type=change.change_type,
+                materiality="high" if change.severity >= 0.66 else "medium" if change.severity >= 0.33 else "low",
+                summary=change.summary,
+                new_citation=change.new_citation.citation_anchor if change.new_citation else "",
+                old_citation_anchor=change.old_citation.citation_anchor if change.old_citation else None,
+                new_citation_anchor=change.new_citation.citation_anchor if change.new_citation else None,
+            )
+            for change in state.disclosure_changes
+        ],
+        evidence_table=[
+            EvidenceEntry(
+                citation_id=citation.chunk_id,
+                citation_anchor=citation.citation_anchor,
+                source_url=citation.source_url,
+            )
+            for citation in memo.evidence_table
+        ],
         watchlist_questions=memo.watchlist_questions,
         limitations=memo.limitations,
         confidence=memo.citation_pass_rate,

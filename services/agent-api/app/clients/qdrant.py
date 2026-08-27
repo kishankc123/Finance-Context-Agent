@@ -65,7 +65,7 @@ class QdrantSearchClient:
     ) -> list[tuple[ChunkRow, float]]:
         try:
             from qdrant_client import QdrantClient
-            from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue, Range
+            from qdrant_client.models import DatetimeRange, FieldCondition, Filter, MatchAny, MatchValue
         except Exception:
             return []
 
@@ -73,19 +73,22 @@ class QdrantSearchClient:
         if filing_types:
             must.append(FieldCondition(key="filing_type", match=MatchAny(any=filing_types)))
         if date_start or date_end:
-            must.append(FieldCondition(key="filed_at", range=Range(gte=date_start, lte=date_end)))
+            must.append(FieldCondition(key="filed_at", range=DatetimeRange(gte=date_start, lte=date_end)))
         if sections:
             must.append(FieldCondition(key="section", match=MatchAny(any=sections)))
 
         client = QdrantClient(url=self.url)
         try:
-            points = client.search(
+            # QdrantClient.search() was removed in qdrant-client 1.10+; the
+            # replacement is query_points(), which wraps results in a
+            # QueryResponse instead of returning the point list directly.
+            points = client.query_points(
                 collection_name=self.collection,
-                query_vector=vector,
+                query=vector,
                 query_filter=Filter(must=must),
                 limit=limit,
                 with_payload=True,
-            )
+            ).points
         except Exception:
             return []
 
