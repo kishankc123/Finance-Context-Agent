@@ -1,0 +1,3 @@
+ticker,shares,market_value,cost_basis,sector
+AAPL,200,50000,180,Technology
+MSFT,120,50000,350,Technology

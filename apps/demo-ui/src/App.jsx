@@ -57,7 +57,7 @@ function ShellTabPlaceholder({ activeTab }) {
   );
 }
 
-function PortfolioTab({ portfolio, client, backendOnline }) {
+function PortfolioTab({ portfolio, client, backendOnline, onPortfolioUploaded }) {
   const [portfolioName, setPortfolioName] = useState(portfolio.name);
   const [file, setFile] = useState(null);
   const ONLINE_STATUS = "Choose a CSV file to upload it to Agent API.";
@@ -82,7 +82,11 @@ function PortfolioTab({ portfolio, client, backendOnline }) {
     try {
       setStatus("Uploading CSV to Agent API...");
       const result = await client.uploadPortfolio(file, portfolioName);
-      setUploadedPortfolioId(result.portfolio_id || result.portfolioId || "");
+      const newPortfolioId = result.portfolio_id || result.portfolioId || "";
+      setUploadedPortfolioId(newPortfolioId);
+      if (newPortfolioId) {
+        onPortfolioUploaded?.(newPortfolioId);
+      }
       setStatus("Portfolio uploaded successfully.");
     } catch (error) {
       setStatus(formatError(error));
@@ -752,6 +756,7 @@ function SeverityBadge({ severity }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("portfolio");
+  const [activePortfolioId, setActivePortfolioId] = useState(SAMPLE_PORTFOLIO.id);
   const [backend, setBackend] = useState({
     state: "checking",
     label: "Checking backend",
@@ -865,13 +870,18 @@ export default function App() {
         </section>
 
         {activeTab === "portfolio" && (
-          <PortfolioTab portfolio={SAMPLE_PORTFOLIO} client={client} backendOnline={backendOnline} />
+          <PortfolioTab
+            portfolio={SAMPLE_PORTFOLIO}
+            client={client}
+            backendOnline={backendOnline}
+            onPortfolioUploaded={setActivePortfolioId}
+          />
         )}
         {activeTab === "analysis" && (
           <AnalysisTab
             client={client}
             backendOnline={backendOnline}
-            defaultPortfolioId={SAMPLE_PORTFOLIO.id}
+            defaultPortfolioId={activePortfolioId}
           />
         )}
         {activeTab === "drift" && <DriftTab client={client} backendOnline={backendOnline} />}
@@ -882,14 +892,14 @@ export default function App() {
           <RiskScoresTab
             client={client}
             backendOnline={backendOnline}
-            portfolioId={SAMPLE_PORTFOLIO.id}
+            portfolioId={activePortfolioId}
           />
         )}
         {activeTab === "memo" && (
           <AnalystMemoTab
             client={client}
             backendOnline={backendOnline}
-            portfolioId={SAMPLE_PORTFOLIO.id}
+            portfolioId={activePortfolioId}
           />
         )}
         {activeTab === "benchmark" && (
@@ -977,15 +987,31 @@ function severityFromScore(value) {
 
 function normalizeRiskScores(payload) {
   const records = payload?.risk_scores || payload?.riskScores || payload?.scores || [];
-  return records.map((item) => ({
-    ticker: item.ticker,
-    score: Number(item.score ?? item.overall_score ?? 0),
-    delta: Number(item.delta ?? item.score_delta ?? 0),
-    confidence: Number(item.confidence ?? 0),
-    drivers: item.top_drivers || item.drivers || [],
-    impact: item.portfolio_impact || item.impact || "Impact not provided by Agent API.",
-    citations: item.citations || [],
-  }));
+  return records.map((item) => {
+    const rawDrivers = item.top_drivers || item.drivers || [];
+    const rawImpact = item.portfolio_impact || item.impact;
+    return {
+      ticker: item.ticker,
+      score: Number(item.score ?? item.overall_score ?? 0),
+      delta: Number(item.delta ?? item.score_delta ?? 0),
+      confidence: Number(item.confidence ?? 0),
+      // Agent API drivers are objects ({category, score, summary, citation}),
+      // not plain strings -- pull out the human-readable summary.
+      drivers: rawDrivers.map((driver) =>
+        typeof driver === "string" ? driver : driver.summary || driver.category || "Driver detail unavailable.",
+      ),
+      // Agent API portfolio_impact is an object ({holding_weight, sector_weight,
+      // exposure_level}), not a string -- rendering it directly throws
+      // "Objects are not valid as a React child" and blanks the whole page.
+      impact:
+        typeof rawImpact === "string"
+          ? rawImpact
+          : rawImpact?.exposure_level
+            ? `${rawImpact.exposure_level} exposure (${Math.round((rawImpact.holding_weight ?? 0) * 100)}% of portfolio)`
+            : "Impact not provided by Agent API.",
+      citations: item.citations || [],
+    };
+  });
 }
 
 function normalizeMemo(payload) {
@@ -997,7 +1023,14 @@ function normalizeMemo(payload) {
     sourceLabel: "Live Agent API memo",
     executiveSummary:
       memo.executive_summary || memo.executiveSummary || "Executive summary unavailable.",
-    affectedHoldings: memo.affected_holdings || memo.affectedHoldings || [],
+    // The Agent API's FindingsMemo has no affected_holdings field -- the real
+    // shape is portfolio_exposure_affected: [{ticker, weight, exposure_level}].
+    affectedHoldings:
+      memo.affected_holdings ||
+      memo.affectedHoldings ||
+      (memo.portfolio_exposure_affected || memo.portfolioExposureAffected || []).map(
+        (exposure) => exposure.ticker,
+      ),
     watchlistQuestions: memo.watchlist_questions || memo.watchlistQuestions || [],
     disclaimer:
       memo.disclaimer ||
