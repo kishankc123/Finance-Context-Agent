@@ -16,7 +16,7 @@ export class ApiError extends Error {
 }
 
 export class AgentApiClient {
-  constructor({ baseUrl, fetchImpl = fetch }) {
+  constructor({ baseUrl, fetchImpl = (...args) => fetch(...args) }) {
     this.baseUrl = baseUrl;
     this.fetch = fetchImpl;
   }

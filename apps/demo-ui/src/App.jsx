@@ -60,11 +60,18 @@ function ShellTabPlaceholder({ activeTab }) {
 function PortfolioTab({ portfolio, client, backendOnline }) {
   const [portfolioName, setPortfolioName] = useState(portfolio.name);
   const [file, setFile] = useState(null);
-  const [status, setStatus] = useState(
-    backendOnline
-      ? "Choose a CSV file to upload it to Agent API."
-      : "Agent API is offline. Showing sample portfolio data.",
-  );
+  const ONLINE_STATUS = "Choose a CSV file to upload it to Agent API.";
+  const OFFLINE_STATUS = "Agent API is offline. Showing sample portfolio data.";
+  const [status, setStatus] = useState(backendOnline ? ONLINE_STATUS : OFFLINE_STATUS);
+  useEffect(() => {
+    setStatus((prev) =>
+      prev === ONLINE_STATUS || prev === OFFLINE_STATUS
+        ? backendOnline
+          ? ONLINE_STATUS
+          : OFFLINE_STATUS
+        : prev,
+    );
+  }, [backendOnline]);
   const [uploadedPortfolioId, setUploadedPortfolioId] = useState("");
 
   async function uploadPortfolio() {
@@ -167,11 +174,18 @@ function AnalysisTab({ client, backendOnline, defaultPortfolioId }) {
     "What changed in supply-chain or customer concentration risk for my semiconductor holdings?",
   );
   const [jobId, setJobId] = useState("");
-  const [status, setStatus] = useState(
-    backendOnline
-      ? "Ready to start an Agent API analysis job."
-      : "Agent API is offline. This tab is ready for live wiring once the API is reachable.",
-  );
+  const ONLINE_STATUS = "Ready to start an Agent API analysis job.";
+  const OFFLINE_STATUS = "Agent API is offline. This tab is ready for live wiring once the API is reachable.";
+  const [status, setStatus] = useState(backendOnline ? ONLINE_STATUS : OFFLINE_STATUS);
+  useEffect(() => {
+    setStatus((prev) =>
+      prev === ONLINE_STATUS || prev === OFFLINE_STATUS
+        ? backendOnline
+          ? ONLINE_STATUS
+          : OFFLINE_STATUS
+        : prev,
+    );
+  }, [backendOnline]);
   const [jobPayload, setJobPayload] = useState(null);
 
   async function startAnalysis() {
@@ -269,11 +283,18 @@ function DriftTab({ client, backendOnline }) {
   const [ticker, setTicker] = useState("AMD");
   const [section, setSection] = useState("Item 1A");
   const [changes, setChanges] = useState(SAMPLE_DRIFT);
-  const [status, setStatus] = useState(
-    backendOnline
-      ? "Sample drift is visible. Load live diff when Agent API data is ready."
-      : "Agent API is offline. Showing clearly labeled sample disclosure changes.",
-  );
+  const ONLINE_STATUS = "Sample drift is visible. Load live diff when Agent API data is ready.";
+  const OFFLINE_STATUS = "Agent API is offline. Showing clearly labeled sample disclosure changes.";
+  const [status, setStatus] = useState(backendOnline ? ONLINE_STATUS : OFFLINE_STATUS);
+  useEffect(() => {
+    setStatus((prev) =>
+      prev === ONLINE_STATUS || prev === OFFLINE_STATUS
+        ? backendOnline
+          ? ONLINE_STATUS
+          : OFFLINE_STATUS
+        : prev,
+    );
+  }, [backendOnline]);
 
   async function loadLiveDiff() {
     try {
@@ -370,11 +391,18 @@ function DriftCard({ change }) {
 function EvidenceExplorerTab({ client, backendOnline }) {
   const [ticker, setTicker] = useState("AMD");
   const [documents, setDocuments] = useState(SAMPLE_EVIDENCE);
-  const [status, setStatus] = useState(
-    backendOnline
-      ? "Sample evidence is visible. Load live documents when Agent API data is ready."
-      : "Agent API is offline. Showing sample citation-ready chunks.",
-  );
+  const ONLINE_STATUS = "Sample evidence is visible. Load live documents when Agent API data is ready.";
+  const OFFLINE_STATUS = "Agent API is offline. Showing sample citation-ready chunks.";
+  const [status, setStatus] = useState(backendOnline ? ONLINE_STATUS : OFFLINE_STATUS);
+  useEffect(() => {
+    setStatus((prev) =>
+      prev === ONLINE_STATUS || prev === OFFLINE_STATUS
+        ? backendOnline
+          ? ONLINE_STATUS
+          : OFFLINE_STATUS
+        : prev,
+    );
+  }, [backendOnline]);
 
   async function loadDocuments() {
     try {
@@ -461,11 +489,18 @@ function EvidenceCard({ item }) {
 
 function RiskScoresTab({ client, backendOnline, portfolioId }) {
   const [scores, setScores] = useState(SAMPLE_RISK);
-  const [status, setStatus] = useState(
-    backendOnline
-      ? "Sample risk scores are visible. Load live findings when Agent API data is ready."
-      : "Agent API is offline. Showing sample research risk scores.",
-  );
+  const ONLINE_STATUS = "Sample risk scores are visible. Load live findings when Agent API data is ready.";
+  const OFFLINE_STATUS = "Agent API is offline. Showing sample research risk scores.";
+  const [status, setStatus] = useState(backendOnline ? ONLINE_STATUS : OFFLINE_STATUS);
+  useEffect(() => {
+    setStatus((prev) =>
+      prev === ONLINE_STATUS || prev === OFFLINE_STATUS
+        ? backendOnline
+          ? ONLINE_STATUS
+          : OFFLINE_STATUS
+        : prev,
+    );
+  }, [backendOnline]);
 
   async function loadFindings() {
     try {
@@ -543,11 +578,18 @@ function RiskScoresTab({ client, backendOnline, portfolioId }) {
 
 function AnalystMemoTab({ client, backendOnline, portfolioId }) {
   const [memo, setMemo] = useState(SAMPLE_MEMO);
-  const [status, setStatus] = useState(
-    backendOnline
-      ? "Sample memo is visible. Load live findings when Agent API data is ready."
-      : "Agent API is offline. Showing a labeled sample memo structure.",
-  );
+  const ONLINE_STATUS = "Sample memo is visible. Load live findings when Agent API data is ready.";
+  const OFFLINE_STATUS = "Agent API is offline. Showing a labeled sample memo structure.";
+  const [status, setStatus] = useState(backendOnline ? ONLINE_STATUS : OFFLINE_STATUS);
+  useEffect(() => {
+    setStatus((prev) =>
+      prev === ONLINE_STATUS || prev === OFFLINE_STATUS
+        ? backendOnline
+          ? ONLINE_STATUS
+          : OFFLINE_STATUS
+        : prev,
+    );
+  }, [backendOnline]);
 
   async function loadMemo() {
     try {
@@ -622,11 +664,18 @@ function AnalystMemoTab({ client, backendOnline, portfolioId }) {
 
 function BenchmarkTab({ client, backendOnline }) {
   const [benchmark, setBenchmark] = useState(SAMPLE_BENCHMARK);
-  const [status, setStatus] = useState(
-    backendOnline
-      ? "Metric placeholders are visible. Load live NIM/Gateway metrics when Agent API exposes them."
-      : "Agent API is offline. Inference metrics are intentionally unavailable.",
-  );
+  const ONLINE_STATUS = "Metric placeholders are visible. Load live NIM/Gateway metrics when Agent API exposes them.";
+  const OFFLINE_STATUS = "Agent API is offline. Inference metrics are intentionally unavailable.";
+  const [status, setStatus] = useState(backendOnline ? ONLINE_STATUS : OFFLINE_STATUS);
+  useEffect(() => {
+    setStatus((prev) =>
+      prev === ONLINE_STATUS || prev === OFFLINE_STATUS
+        ? backendOnline
+          ? ONLINE_STATUS
+          : OFFLINE_STATUS
+        : prev,
+    );
+  }, [backendOnline]);
 
   async function loadBenchmark() {
     try {
