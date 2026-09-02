@@ -37,6 +37,11 @@ def build_graph() -> object:
         return None
 
     graph = StateGraph(AnalysisState)
+
+    '''Create async functions for each node in the graph that will call the corresponding agent 
+    function with the validated state'''
+
+    
     async def planner_node(state: AnalysisState | dict) -> AnalysisState:
         return await portfolio_context_planner(ensure_state(state))
 
@@ -49,11 +54,17 @@ def build_graph() -> object:
     async def memo_node(state: AnalysisState | dict) -> AnalysisState:
         return await analyst_memo(ensure_state(state))
 
+    #Create the graph nodes by taking each part of LangGraph as a node in the graph
     graph.add_node("portfolio_context_planner", planner_node)
     graph.add_node("filing_retrieval", retrieval_node)
     graph.add_node("disclosure_change", change_node)
     graph.add_node("analyst_memo", memo_node)
+
+    #Set the entry point of the graph to the first node, which is the portfolio context planner
     graph.set_entry_point("portfolio_context_planner")
+
+    #creating the edges of the graph to connect each node in sequence, creating a directed graph 
+    # that represents the workflow
     graph.add_edge("portfolio_context_planner", "filing_retrieval")
     graph.add_edge("filing_retrieval", "disclosure_change")
     graph.add_edge("disclosure_change", "analyst_memo")

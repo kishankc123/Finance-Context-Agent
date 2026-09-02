@@ -77,11 +77,13 @@ async def portfolio_context_planner(state: AnalysisState) -> AnalysisState:
                     ],
                     model="fincontext-planner",
                 )
-            # The model isn't reliably aware of the current date and will
-            # invent a plausible-looking but wrong date_range (e.g. years in
-            # the past), silently excluding every real filing. Date math is
-            # deterministic -- always trust the code-computed fallback range
-            # over whatever the model returns.
+                
+            '''The model isn't reliably aware of the current date and will
+            invent a plausible-looking but wrong date_range (e.g. years in
+            the past), silently excluding every real filing. Date math is
+            deterministic -- always trust the code-computed fallback range
+            over whatever the model returns.'''
+
             data.pop("date_range_start", None)
             data.pop("date_range_end", None)
             plan = RetrievalPlan.model_validate({**fallback.model_dump(), **data})

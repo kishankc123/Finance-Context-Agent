@@ -106,7 +106,6 @@ def require_auth(
     if credentials is None or credentials.credentials != _AGENT_API_KEY:
         raise HTTPException(status_code=401, detail="Invalid or missing API key.")
 
-
 # ---------------------------------------------------------------------------
 # CSV parsing helper
 # ---------------------------------------------------------------------------
