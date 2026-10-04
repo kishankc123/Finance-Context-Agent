@@ -31,6 +31,18 @@ from worker.vector_store import upsert_vectors
 
 logger = logging.getLogger("fincontext.ingestion")
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_repo_path(value: str) -> str:
+    # SQLITE_DB_PATH in .env (e.g. "./fincontext.db") is meant relative to the
+    # repo root, per the project setup commands, not wherever this script is
+    # invoked from. Anchor relative paths there instead of the CWD.
+    path = Path(value)
+    if path.is_absolute():
+        return str(path)
+    return str((REPO_ROOT / path).resolve())
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Pre-ingest SEC filings for FinContext.")
@@ -43,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--years", type=int, default=4, help="Lookback window in years.")
     parser.add_argument(
         "--db-path",
-        default=os.getenv("SQLITE_DB_PATH", "../../fincontext.db"),
+        default=_resolve_repo_path(os.getenv("SQLITE_DB_PATH", "fincontext.db")),
         help="SQLite DB path.",
     )
     parser.add_argument(

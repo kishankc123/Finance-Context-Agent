@@ -87,15 +87,44 @@ They do not call NVIDIA NIM, embedding backends, or reranker backends directly.
 
 ## Run The Whole App Locally
 
-The local app has four running processes plus one SQLite file:
+The local app has five running processes plus one SQLite file:
 
 | Component         | Command           | Port                          |
-| ----------------- | ----------------- | ----------------------------- |
-| Qdrant            | Docker Compose    | `6333`                        |
-| Inference Gateway | FastAPI / Uvicorn | `8080`                        |
-| Agent API         | FastAPI / Uvicorn | `8090`                        |
-| React UI          | Vite              | shown by Vite, usually `5173` |
-| SQLite            | local file        | no server process             |
+| ------------------ | ----------------- | ----------------------------- |
+| Qdrant             | Docker Compose    | `6333`                        |
+| Embedding Service  | FastAPI / Uvicorn | `8002`                        |
+| Inference Gateway  | FastAPI / Uvicorn | `8080`                        |
+| Agent API          | FastAPI / Uvicorn | `8090`                        |
+| React UI           | Vite              | shown by Vite, usually `5173` |
+| SQLite             | local file        | no server process             |
+
+### Quick Start
+
+Once `.env` is configured (step 1 below) and each service's `requirements.txt`
+is installed into its venv (steps 4-5), `scripts/dev_up.sh` starts Qdrant, the
+embedding service, and the Inference Gateway together:
+
+```bash
+chmod +x scripts/dev_up.sh scripts/dev_down.sh   # one-time
+./scripts/dev_up.sh
+```
+
+It waits for each service's health endpoint before starting the next, and
+skips anything already running. Logs land in `.run/<service>.log`, PIDs in
+`.run/<service>.pid`. Stop everything it started with:
+
+```bash
+./scripts/dev_down.sh
+```
+
+(Qdrant is a Docker container, not a process this script owns, so it's left
+running — stop it separately with `docker compose -f infra/docker-compose.yml
+stop qdrant` if you want it down too.)
+
+You still start the Agent API, React UI, and ingestion worker yourself (steps
+6, 7, and "Ingest Filing Data" below) since those aren't part of the shared
+dev stack. The manual steps below are what `dev_up.sh` automates, useful if
+you want to run a service in the foreground to watch its logs directly.
 
 ### 1. Configure Environment
 
@@ -134,11 +163,39 @@ python3 infra/qdrant/init_collection.py
 This creates the local metadata DB and the `fincontext_chunks` Qdrant
 collection.
 
-### 4. Start Inference Gateway
+### 4. Start Embedding Service
 
-In a new terminal:
+Each service keeps its own virtualenv (`.venv-embeddings`, `.venv-gateway`,
+`.venv-agent-api`, `.venv-ingestion`) so one service's dependency changes don't
+break another. Create the venv once, then reuse it.
+
+In a new terminal, from the repo root:
 
 ```bash
+python3 -m venv .venv-embeddings
+source .venv-embeddings/bin/activate
+cd services/embedding-service
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8002
+```
+
+First startup takes a bit longer while it downloads/loads the
+`BAAI/bge-large-en-v1.5` and reranker models locally. Check it:
+
+```bash
+curl http://localhost:8002/docs
+```
+
+The Gateway proxies embedding/rerank calls here via `EMBEDDING_URL` /
+`RERANKER_URL` in `.env` — start this before the Gateway.
+
+### 5. Start Inference Gateway
+
+In a new terminal, from the repo root:
+
+```bash
+python3 -m venv .venv-gateway
+source .venv-gateway/bin/activate
 cd services/inference-gateway
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8080 --reload
@@ -150,11 +207,13 @@ Check it:
 curl http://localhost:8080/health
 ```
 
-### 5. Start Agent API
+### 6. Start Agent API
 
-In a new terminal:
+In a new terminal, from the repo root:
 
 ```bash
+python3 -m venv .venv-agent-api
+source .venv-agent-api/bin/activate
 cd services/agent-api
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8090 --reload
@@ -166,7 +225,7 @@ Check it:
 curl http://localhost:8090/health
 ```
 
-### 6. Start React UI
+### 7. Start React UI
 
 In a new terminal:
 
@@ -187,6 +246,31 @@ Qdrant, SQLite, Inference Gateway, Agent API, NIM credentials, and configured
 embedding/reranker backends to be working. NIM handles chat completions only in
 the current code; document embeddings and reranking still go through the
 Gateway to `EMBEDDING_URL` and `RERANKER_URL`.
+
+## Ingest Filing Data
+
+Before the UI can answer real questions, SQLite and Qdrant need filings in
+them. This is a one-shot CLI you run yourself, not a live-demo path — see
+`docs/ingestion-output-contract.md` for what it writes.
+
+Requires Qdrant and the embedding service + Inference Gateway running (steps
+above, or `./scripts/dev_up.sh`):
+
+```bash
+python3 -m venv .venv-ingestion
+source .venv-ingestion/bin/activate
+cd services/ingestion-worker
+pip install -r requirements.txt
+python ingest.py --tickers AAPL,MSFT --filing-types 10-K,10-Q --years 4
+```
+
+`SEC_USER_AGENT` loads automatically from the repo-root `.env` (via
+`python-dotenv`) — no need to `export` it manually. It must identify your app
+and include a real contact email, per SEC's fair-access policy.
+
+Re-running the same command is safe: chunks are deduplicated by content hash,
+so it only ingests what's missing (new tickers, or filings from a previous
+run that failed partway through).
 
 ## Current Build State
 
@@ -226,6 +310,10 @@ apps/
 packages/
   schemas/               Shared Pydantic state, DB, and API contracts
   evals/                 Retrieval/diff/citation benchmark docs and fixtures
+
+scripts/
+  dev_up.sh              Start Qdrant, embedding service, Inference Gateway
+  dev_down.sh            Stop services started by dev_up.sh
 
 infra/
   schema.sql             SQLite tables, indexes, and FTS5 triggers
