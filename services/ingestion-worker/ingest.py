@@ -16,6 +16,9 @@ import logging
 import os
 import sqlite3
 from datetime import date, timedelta
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from worker.chunking import chunk_document
 from worker.db import connect, get_existing_hashes, upsert_chunks, upsert_document
@@ -216,6 +219,7 @@ def _log(event: str, **fields: object) -> None:
 
 
 def main() -> int:
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
     args = parse_args()
     try:
         asyncio.run(ingest(args))

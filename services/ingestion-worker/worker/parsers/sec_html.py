@@ -7,8 +7,8 @@ and Item 8. PDF parsing is intentionally out of scope for the hackathon MVP.
 
 from __future__ import annotations
 
+import hashlib
 import re
-import uuid
 from collections.abc import Iterable
 
 from bs4 import BeautifulSoup, Tag
@@ -72,7 +72,7 @@ BLOCK_TAGS = [
 def parse_sec_html(html: str, filing: FilingRef) -> NormalizedDocument:
     sections = extract_sections(html)
     return NormalizedDocument(
-        document_id=str(uuid.uuid4()),
+        document_id=_stable_document_id(filing),
         ticker=filing.ticker,
         cik=filing.cik,
         company_name=filing.company_name,
@@ -83,6 +83,14 @@ def parse_sec_html(html: str, filing: FilingRef) -> NormalizedDocument:
         source_url=filing.source_url or "",
         sections=sections,
     )
+
+
+def _stable_document_id(filing: FilingRef) -> str:
+    # Accession numbers are globally unique per SEC filing, so hashing on
+    # ticker + accession number keeps document_id stable across ingestion
+    # reruns (upsert_document keys on this id to avoid duplicate rows).
+    key = f"{filing.ticker}:{filing.accession_number}"
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:32]
 
 
 def extract_sections(html: str) -> list[NormalizedSection]:

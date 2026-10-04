@@ -1,5 +1,6 @@
 -e ../../packages/schemas
 httpx
+python-dotenv
 beautifulsoup4
 lxml
 tiktoken
